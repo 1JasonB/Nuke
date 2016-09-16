@@ -15,19 +15,19 @@
 /// Decodes data into images.
 public protocol ImageDecoding {
     /// Decodes data into an image object.
-    func decode(data: NSData, response: NSURLResponse?) -> Image?
+    func decode(_ data: Data, response: URLResponse?) -> Image?
 }
 
 
 private let lock = NSLock()
 
 /// Decodes data into an image object. Image scale is set to the scale of the main screen.
-public class ImageDecoder: ImageDecoding {
+open class ImageDecoder: ImageDecoding {
     /// Initializes the receiver.
     public init() {}
 
     /// Decodes data into an image object using native methods.
-    public func decode(data: NSData, response: NSURLResponse?) -> Image? {
+    open func decode(_ data: Data, response: URLResponse?) -> Image? {
         var image: Image?
         /* Image initializers are not considered thread safe:
         - https://github.com/AFNetworking/AFNetworking/issues/2572
@@ -47,9 +47,9 @@ public class ImageDecoder: ImageDecoding {
 
     #if !os(OSX)
     /// The scale used when creating an image object. Return the scaleM of the main screen.
-    public var imageScale: CGFloat {
+    open var imageScale: CGFloat {
         #if os(iOS) || os(tvOS)
-            return UIScreen.mainScreen().scale
+            return UIScreen.main.scale
         #else
             return WKInterfaceDevice.currentDevice().screenScale
         #endif
@@ -58,9 +58,9 @@ public class ImageDecoder: ImageDecoding {
 }
 
 /// Composes multiple image decoders.
-public class ImageDecoderComposition: ImageDecoding {
+open class ImageDecoderComposition: ImageDecoding {
     /// Image decoders that the receiver was initialized with.
-    public let decoders: [ImageDecoding]
+    open let decoders: [ImageDecoding]
 
     /// Composes multiple image decoders.
     public init(decoders: [ImageDecoding]) {
@@ -68,7 +68,7 @@ public class ImageDecoderComposition: ImageDecoding {
     }
 
     /// Decoders are applied in an order in which they are present in the decoders array. The decoding stops when one of the decoders produces an image.
-    public func decode(data: NSData, response: NSURLResponse?) -> Image? {
+    open func decode(_ data: Data, response: URLResponse?) -> Image? {
         for decoder in decoders {
             if let image = decoder.decode(data, response: response) {
                 return image

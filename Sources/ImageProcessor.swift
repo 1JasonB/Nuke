@@ -18,22 +18,22 @@ Types that implement `ImageProcessing` protocol should either use one of the def
 */
 public protocol ImageProcessing {
     /// Returns processed image.
-    func process(image: Image) -> Image?
+    func process(_ image: Image) -> Image?
 
     /// Compares two processors for equivalence. Two processors are equivalent if they produce the same image for the same input. For more info see the extensions that provide default implementations of this method.
-    func isEquivalent(other: ImageProcessing) -> Bool
+    func isEquivalent(_ other: ImageProcessing) -> Bool
 }
 
 public extension ImageProcessing {
     /// Returns true if both processors are instances of the same class. Use this implementation when your filter doesn't have any parameters.
-    public func isEquivalent(other: ImageProcessing) -> Bool {
+    public func isEquivalent(_ other: ImageProcessing) -> Bool {
         return other is Self
     }
 }
 
 public extension ImageProcessing where Self: Equatable {
     /// Compares processors using == function.
-    public func isEquivalent(other: ImageProcessing) -> Bool {
+    public func isEquivalent(_ other: ImageProcessing) -> Bool {
         return (other as? Self) == self
     }
 }
@@ -42,9 +42,9 @@ public extension ImageProcessing where Self: Equatable {
 // MARK: - ImageProcessorComposition
 
 /// Composes multiple image processors.
-public class ImageProcessorComposition: ImageProcessing, Equatable {
+open class ImageProcessorComposition: ImageProcessing, Equatable {
     /// Image processors that the receiver was initialized with.
-    public let processors: [ImageProcessing]
+    open let processors: [ImageProcessing]
 
     /// Composes multiple image processors.
     public init(processors: [ImageProcessing]) {
@@ -52,9 +52,9 @@ public class ImageProcessorComposition: ImageProcessing, Equatable {
     }
 
     /// Processes the given image by applying each processor in an order in which they are present in the processors array. If one of the processors fails to produce an image the processing stops and nil is returned.
-    public func process(input: Image) -> Image? {
+    open func process(_ input: Image) -> Image? {
         return processors.reduce(input as Image!) { image, processor in
-            return image != nil ? processor.process(image) : nil
+            return image != nil ? processor.process(image!) : nil
         }
     }
 }
@@ -67,25 +67,25 @@ public func ==(lhs: ImageProcessorComposition, rhs: ImageProcessorComposition) -
 
 
 /// The `ImageProcessorWithClosure` is used for creating anonymous image filters.
-public class ImageProcessorWithClosure: ImageProcessing, Equatable {
+open class ImageProcessorWithClosure: ImageProcessing, Equatable {
     /// The identifier of the filter. Filters with equivalent closures should have the same identifiers.
-    public let identifier: String
+    open let identifier: String
 
     /// A closure that performs image processing.
-    public let closure: Image -> Image?
+    open let closure: (Image) -> Image?
 
     /**
      Initializes the `ImageProcessorWithClosure` with the given identifier and closure.
 
      - parameter identifier: The identifier of the filter. Filters with equivalent closures should have the same identifiers.
      */
-    public init(identifier: String, closure: Image -> Image?) {
+    public init(identifier: String, closure: @escaping (Image) -> Image?) {
         self.identifier = identifier
         self.closure = closure
     }
 
     /// Processors images using a closure that the receiver was initialized with.
-    public func process(image: Image) -> Image? {
+    open func process(_ image: Image) -> Image? {
         return closure(image)
     }
 }
@@ -106,12 +106,12 @@ public func ==(lhs: ImageProcessorWithClosure, rhs: ImageProcessorWithClosure) -
 
     Decompression and scaling are performed in a single pass which improves performance and reduces memory usage.
     */
-    public class ImageDecompressor: ImageProcessing, Equatable {
+    open class ImageDecompressor: ImageProcessing, Equatable {
         /// Target size in pixels. Default value is ImageMaximumSize.
-        public let targetSize: CGSize
+        open let targetSize: CGSize
 
         /// An option for how to resize the image to the target size. Default value is .AspectFill. See ImageContentMode enum for more info.
-        public let contentMode: ImageContentMode
+        open let contentMode: ImageContentMode
 
         /**
          Initializes the receiver with target size and content mode.
@@ -119,13 +119,13 @@ public func ==(lhs: ImageProcessorWithClosure, rhs: ImageProcessorWithClosure) -
          - parameter targetSize: Target size in pixels. Default value is ImageMaximumSize.
          - parameter contentMode: An option for how to resize the image to the target size. Default value is .AspectFill. See ImageContentMode enum for more info.
          */
-        public init(targetSize: CGSize = ImageMaximumSize, contentMode: ImageContentMode = .AspectFill) {
+        public init(targetSize: CGSize = ImageMaximumSize, contentMode: ImageContentMode = .aspectFill) {
             self.targetSize = targetSize
             self.contentMode = contentMode
         }
 
         /// Decompressed the input image.
-        public func process(image: Image) -> Image? {
+        open func process(_ image: Image) -> Image? {
             return decompress(image, targetSize: targetSize, contentMode: contentMode)
         }
     }
@@ -135,41 +135,41 @@ public func ==(lhs: ImageProcessorWithClosure, rhs: ImageProcessorWithClosure) -
         return lhs.targetSize == rhs.targetSize && lhs.contentMode == rhs.contentMode
     }
 
-    private func decompress(image: UIImage, targetSize: CGSize, contentMode: ImageContentMode) -> UIImage {
-        guard let cgImage = image.CGImage else {
+    private func decompress(_ image: UIImage, targetSize: CGSize, contentMode: ImageContentMode) -> UIImage {
+        guard let cgImage = image.cgImage else {
             return image
         }
-        let bitmapSize = CGSize(width: CGImageGetWidth(cgImage), height: CGImageGetHeight(cgImage))
+        let bitmapSize = CGSize(width: cgImage.width, height: cgImage.height)
         let scaleHor = targetSize.width / bitmapSize.width
         let scaleVert = targetSize.height / bitmapSize.height
-        let scale = contentMode == .AspectFill ? max(scaleHor, scaleVert) : min(scaleHor, scaleVert)
+        let scale = contentMode == .aspectFill ? max(scaleHor, scaleVert) : min(scaleHor, scaleVert)
         return decompress(image, scale: CGFloat(min(scale, 1)))
     }
 
-    private func decompress(image: UIImage, scale: CGFloat) -> UIImage {
-        guard let imageRef = image.CGImage else { return image }
+    private func decompress(_ image: UIImage, scale: CGFloat) -> UIImage {
+        guard let imageRef = image.cgImage else { return image }
         
-        let size = CGSize(width: round(scale * CGFloat(CGImageGetWidth(imageRef))), height: round(scale * CGFloat(CGImageGetHeight(imageRef))))
+        let size = CGSize(width: round(scale * CGFloat(imageRef.width)), height: round(scale * CGFloat(imageRef.height)))
 
         // For more info see:
         // - Quartz 2D Programming Guide
         // - https://github.com/kean/Nuke/issues/35
         // - https://github.com/kean/Nuke/issues/57
-        let alphaInfo = isOpaque(imageRef) ? CGImageAlphaInfo.NoneSkipLast : CGImageAlphaInfo.PremultipliedLast
+        let alphaInfo = isOpaque(imageRef) ? CGImageAlphaInfo.noneSkipLast : CGImageAlphaInfo.premultipliedLast
         let bitmapInfo = CGBitmapInfo(rawValue: alphaInfo.rawValue)
 
-        guard let contextRef = CGBitmapContextCreate(nil, Int(size.width), Int(size.height), 8, 0, CGColorSpaceCreateDeviceRGB(), bitmapInfo.rawValue) else {
+        guard let contextRef = CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: bitmapInfo.rawValue) else {
             return image
         }
-        CGContextDrawImage(contextRef, CGRect(origin: CGPointZero, size: size), imageRef)
-        guard let decompressedImageRef = CGBitmapContextCreateImage(contextRef) else {
+        contextRef.draw(imageRef, in: CGRect(origin: CGPoint.zero, size: size))
+        guard let decompressedImageRef = contextRef.makeImage() else {
             return image
         }
-        return UIImage(CGImage: decompressedImageRef, scale: image.scale, orientation: image.imageOrientation)
+        return UIImage(cgImage: decompressedImageRef, scale: image.scale, orientation: image.imageOrientation)
     }
 
-    private func isOpaque(image: CGImageRef) -> Bool {
-        let alpha = CGImageGetAlphaInfo(image)
-        return alpha == .None || alpha == .NoneSkipFirst || alpha == .NoneSkipLast
+    private func isOpaque(_ image: CGImage) -> Bool {
+        let alpha = image.alphaInfo
+        return alpha == .none || alpha == .noneSkipFirst || alpha == .noneSkipLast
     }
 #endif

@@ -12,7 +12,7 @@ import Foundation
  - Completed -> []
 */
 public enum ImageTaskState {
-    case Suspended, Running, Cancelled, Completed
+    case suspended, running, cancelled, completed
 }
 
 /// ImageTask completion block, gets called when task is either completed or cancelled.
@@ -33,21 +33,21 @@ public struct ImageTaskProgress {
 }
 
 /// Abstract class for image tasks. Tasks are always part of the image manager, you create a task by calling one of the methods on ImageManager.
-public class ImageTask: Hashable {
+open class ImageTask: Hashable {
     
     // MARK: Obtainig General Task Information
     
     /// The request that task was created with.
-    public let request: ImageRequest
+    open let request: ImageRequest
 
     /// The response which is set when task is either completed or cancelled.
-    public internal(set) var response: ImageResponse?
+    open internal(set) var response: ImageResponse?
 
     /// Return hash value for the receiver.
-    public var hashValue: Int { return identifier }
+    open var hashValue: Int { return identifier }
     
     /// Uniquely identifies the task within an image manager.
-    public let identifier: Int
+    open let identifier: Int
     
     
     // MARK: Configuring Task
@@ -65,28 +65,28 @@ public class ImageTask: Hashable {
      
      The closure is called even if it is added to the already completed or cancelled task.
      */
-    public func completion(completion: ImageTaskCompletion) -> Self { fatalError("Abstract method") }
+    open func completion(_ completion: @escaping ImageTaskCompletion) -> Self { fatalError("Abstract method") }
     
     
     // MARK: Obraining Task Progress
     
     /// Return current task progress. Initial value is (0, 0).
-    public internal(set) var progress = ImageTaskProgress()
+    open internal(set) var progress = ImageTaskProgress()
     
     /// A progress closure that gets periodically during the lifecycle of the task.
-    public var progressHandler: ((progress: ImageTaskProgress) -> Void)?
+    open var progressHandler: ((_ progress: ImageTaskProgress) -> Void)?
     
     
     // MARK: Controlling Task State
     
     /// The current state of the task.
-    public internal(set) var state: ImageTaskState = .Suspended
+    open internal(set) var state: ImageTaskState = .suspended
     
     /// Resumes the task if suspended. Resume methods are nestable.
-    public func resume() -> Self { fatalError("Abstract method") }
+    open func resume() -> Self { fatalError("Abstract method") }
     
     /// Cancels the task if it hasn't completed yet. Calls a completion closure with an error value of { ImageManagerErrorDomain, ImageManagerErrorCancelled }.
-    public func cancel() -> Self { fatalError("Abstract method") }
+    open func cancel() -> Self { fatalError("Abstract method") }
 }
 
 /// Compares two image tasks by reference.
